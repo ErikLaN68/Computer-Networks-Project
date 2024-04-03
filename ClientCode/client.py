@@ -4,21 +4,14 @@ import threading
 import queue
 import pickle
 # import PySimpleGUI as sg
+# Messages for Gil
+# I think we need to look into using something like json for file transfer
+# The reason for this is becase the basic sockets can only send bytes and with json it would make the format much easier
+# the pickels should be fine but I'll test later
+#
+# The client currently sends a single image and the receiver client will get that message and write it out
+# This has yet to be tested but will be.
 
-
-def start_server(port):
-    # This function will create our TCP Server Socket, start listening, then return the Socket Object
-    tcp_server_socket = socket.socket(socket.AF_INET,socket.SOCK_STREAM)
-    # Blocking is set to 1 because threading is being used.
-    # The main server will block and wait for a connect from many clients and then let threads do the work concurrently
-    tcp_server_socket.setblocking(1)
-    # Checking that the port is not being used
-    try:
-        tcp_server_socket.bind(('127.0.0.1', port))  # Start listening!
-    except socket.error as e:
-        print('Port is busy at the moment.\nTry again later')
-        sys.exit(2)
-    return tcp_server_socket
 
 def make_server_socket(ip, port):
     # This function will be used to create a socket and connect to server
@@ -44,35 +37,104 @@ def client_to_client_thread(client_to_client_port):
     tcp_server_socket.listen(10)  # 10 is the max number of queued connections allowed
     while True:
         client_socket, addr = server_socket.accept()
-        message = client_socket.recv(4094)
+        message = client_socket.recv(50000)
+        message_queue.put(message)
+
+def initial_message():
+    # Have to use bytes but is of form hostname, ip
+    to_be_sent = hostname + ', ' + ip
+    server_socket.sendall(to_be_sent.encode('utf-8'))
+
+def get_client_list_from_server():
+    server_socket.sendall(b'sendlist')
+    sendable_client_list = server_socket.recv(4096)
+    # Unpickle the data
+    sendable_client_list = pickle.loads(sendable_client_list)
+    return sendable_client_list
+
+def view_and_send_clients():
+    client_list = get_client_list_from_server()
+    for client in client_list:
+        print(client)
+    client_selection = input('Enter the IP of the host you would like to send to\n>> ')
+    
+    test_file_name = 'fightstick.png'
+    print('Message to be sent is ' + test_file_name)
+    with open(test_file_name, 'rb') as imagefile:
+        imagedata = imagefile.read()
+    
+    try:
+        # Sends the image to the client
+        # image needs the filename and file ext put in the message somewhere
+        client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        client_socket.connect((client_selection,client_to_client_port))
+        client_socket.sendall(imagedata)
+        # Sends a history message to the server
+        history_message = hostname + ', ' + ip + ', ' + test_file_name
+        server_socket.sendall(history_message.encode('utf-8'))
+        client_socket.close()
+    except socket.error as e:
+        print('Not a correct IP')
+        
+def get_message():        
+    if not message_queue.empty():
+        message = message_queue.get()
+        return message
+    else:
+        return None
+        
+def view_messages():
+    message = get_message()
+    if message == None:
+        print('No messages have been sent to you')
+        return
+    with open('test-file-send', 'wb') as imagefile:
+        imagefile.write(message)
+        
+def view_history():
+    server_socket.sendall(b'sendhistory')
+    history_list = server_socket.recv(50000)
+    history_list = pickle.loads(history_list)
+    
+    for hist in history_list:
+        print(hist)
 
 if __name__ == '__main__':    
     server_ip = '127.0.0.1'
     server_port = 8888
+    hostname = 'client1'
+    message_queue = queue.Queue()
     
+    ip = socket.gethostbyname(socket.gethostname())
     client_to_client_port = 8080
-    #Connect to server
+    
+    # sends info to the server
+    initial_message()
+    
+    #Starts the client server
     server_socket = make_server_socket(server_ip, server_port)
     
+    # Sends the initial message to the server to get the client list
+    sendable_client_list = get_client_list_from_server()
+    
+    # starts the rec thread
     print('Receiver Thread Started\n')
     thread_rec = threading.Thread(target=client_to_client_thread, args=(client_to_client_port))
     thread_rec.daemon = True
     thread_rec.start()
-    
+        
     while True:
         
-        user_input = input('User menu (Enter exit to end)\n1-View Sendable Clients:\n2-View Messages\n3-Send Message\n>> ')
+        user_input = input('User menu (Enter exit to end)\n1-View and send to clients:\n2-View Messages\n3-View History\n>> ')
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         sock.connect(('127.0.0.1', 8888))
                     
         match user_input:
-            case '1': print('hold 1')
-            case '2': print('Hold 2')
-            case '3': print('Hold 3')
+            case '1': view_and_send_clients()
+            case '2': view_messages()
+            case '3': view_history()
             case 'exit': sys.exit()
             case _: print('Incorrect input')
-            
-            
         
         sock.send(user_input.encode()) 
         dataServer = sock.recv(100)

@@ -51,7 +51,17 @@ except:
 tcpSerSock.listen(100)
 # Adds server to allow it to allows be connected to
 inputs = [tcpSerSock]
+
+#This is the list of Clients. We Need to Maintain this here!
 clients = []
+
+#Function. Adds the ability to write the serialized clients to a .txt file.
+    #It is already pickled and will persist between server uses.
+def write_clients_to_file(serialized_clients, file_name):
+    with open(file_name, 'w') as file:
+        for client in serialized_clients:
+            file.write(f"{client}\\n")
+
 outputs = []
 address = []
 # Dict that holds the socket message pair
@@ -65,6 +75,12 @@ while 1:
     # Serialize the list
     serialized_clients = pickle.dumps(clients)
     print('\n')
+
+    #Call write_clients_to_file the clients list to "clients_list.txt"
+    write_clients_to_file(serialized_clients, "clients_list.txt")
+
+    # Print message.
+    print("The list of clients has been successfully written to clients_list.txt")
     
     readable, writable, exceptional = select.select(inputs, outputs, inputs)
     

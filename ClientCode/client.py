@@ -40,7 +40,7 @@ def client_to_client_thread(client_to_client_port):
         message = client_socket.recv(50000)
         message_queue.put(message)
 
-def initial_message():
+def initial_message(server_socket):
     # Have to use bytes but is of form hostname, ip
     to_be_sent = hostname + ', ' + ip
     server_socket.sendall(to_be_sent.encode('utf-8'))
@@ -108,11 +108,13 @@ if __name__ == '__main__':
     ip = socket.gethostbyname(socket.gethostname())
     client_to_client_port = 8080
     
-    # sends info to the server
-    initial_message()
+    
     
     #Starts the client server
     server_socket = make_server_socket(server_ip, server_port)
+
+    # sends info to the server
+    initial_message(server_socket)
     
     # Sends the initial message to the server to get the client list
     sendable_client_list = get_client_list_from_server()

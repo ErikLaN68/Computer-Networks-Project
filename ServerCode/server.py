@@ -11,6 +11,7 @@
 #Be able to send list back to clients using serialized messages.
 #Make a store of pictures (Actually ip address and name)
 
+#TUPLE FUCK CONCAT STRING
 
 #Standardzed message format
 #The client will send 'sendlist'

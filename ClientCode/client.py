@@ -36,7 +36,7 @@ def client_to_client_thread(client_to_client_port):
         sys.exit(2)
     tcp_server_socket.listen(10)  # 10 is the max number of queued connections allowed
     while True:
-        client_socket, addr = server_socket.accept()
+        client_socket, addr = tcp_server_socket.accept()
         message = client_socket.recv(50000)
         message_queue.put(message)
 
@@ -47,8 +47,15 @@ def initial_message(server_socket):
 
 def get_client_list_from_server():
     server_socket.sendall(b'sendlist')
-    sendable_client_list = server_socket.recv(4096)
+    sendable_client_list = b''
+    while True:
+        message = server_socket.recv(4096)
+        if not message:
+            break
+        else:
+            sendable_client_list += message
     # Unpickle the data
+    print("Client list: " + str(sendable_client_list))
     sendable_client_list = pickle.loads(sendable_client_list)
     return sendable_client_list
 
@@ -101,7 +108,7 @@ def view_history():
 
 if __name__ == '__main__':    
     server_ip = '127.0.0.1'
-    server_port = 8888
+    server_port = 8880
     hostname = 'client1'
     message_queue = queue.Queue()
     
@@ -137,6 +144,8 @@ if __name__ == '__main__':
             case '3': view_history()
             case 'exit': sys.exit()
             case _: print('Incorrect input')
+            #hi can u see me?
+
         
         sock.send(user_input.encode()) 
         dataServer = sock.recv(100)

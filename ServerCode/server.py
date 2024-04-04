@@ -1,39 +1,40 @@
-#Need this to upkeep a list of clients.
-#Need this to handle certian messages.
-    #Clients will send "Send me cleient message"
-    #send a message that says shutdown to remove from list.
-
-#have an image recieved. Server will keep a history.
-#Have a peered history? Log?
-
-#HAVE GIL ADD TO SERVER:
-#Add the maintaining of a list
-#Be able to send list back to clients using serialized messages.
-#Make a store of pictures (Actually ip address and name)
-
-#TUPLE FUCK CONCAT STRING
-
-#Standardzed message format
-#The client will send 'sendlist'
-#The server will then send the list of other clients.
-
-#Everytime a client sends to someone, we will append to a list
-#that contain the ip addresses and name.
-#The client can request to see this list via a message named 'sendhistory'
-
-
-#Networks Assignment - Server Select
-
+#-------------------------------------------------------------------------------------------------
+#Task List. [NEW VM Version.]
+    #Normal file seems to work so adding things to make it nicer.
+#1. Want Server to upkeep a list of clients. [DONE, see clients_list.txt]
+#2. Need Server to handle certian messages.
+    #'sendlist'
+        #Clients will send "Send me client list message." 
+        #Server will Send client list!
+            #Hope to use a pickled list, use the addresses.
+    #'sendshutdown'
+    #Client will send "shutdown message"
+    #Server will remove from list.
+    #'sendhistory'
+    #Client will send "get history message"
+    #Server will send the history log.
+#3. Want server to upkeep "store" of images.
+    ##Everytime a client sends to someone, we will append to a list!!
+    #not actually a store but more like a list that contains IP addresses and names.
+    #This history is to "keep security", but not actually show pictures for privacy.
+        #we hope to use a tuple.
+#-------------------------------------------------------------------------------------------------
+#Networks Project - Server Side.
+#Done By Erik L. & Gilbert G.
+#-------------------------------------------------------------------------------------------------
+#Default Imports.
 from socket import *
 import sys, select, os, time
 import pickle
 
-#IP of local host
-#Add user input for changing server IP later.
+#IP address of local host.
+#TODO: Add user input for changing server IP when UI is more developed.
 serverIp = '127.0.0.1'
-#Add GUI change to port later.
+#TODO: Add GUI change to port when UI is more developed.
+#Harcoded port for 8880.
 port = 8880
 
+#Print what Server IP and port are in use.
 print('Using local host with IP '+ serverIp +'\nPort ' + str(port) + ' is being used')
 #It's a proxy so it should problem run for every so the exit is going to be simple.
 print('Press crtl + c to exit out of the program\n')
@@ -60,7 +61,7 @@ clients = []
 def write_clients_to_file(serialized_clients, file_name):
     with open(file_name, 'w') as file:
         for client in serialized_clients:
-            file.write(f"{client}\\n")
+            file.write(f"{client}\n")
 
 outputs = []
 address = []

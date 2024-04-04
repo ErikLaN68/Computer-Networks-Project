@@ -9,6 +9,8 @@ import pickle
 # The reason for this is becase the basic sockets can only send bytes and with json it would make the format much easier
 # the pickels should be fine but I'll test later
 #
+#Pickles appear to work, at least for now. But we need to ensure that it would work for larger filetypes.(e.g. gif)
+#
 # The client currently sends a single image and the receiver client will get that message and write it out
 # This has yet to be tested but will be.
 

@@ -31,7 +31,7 @@ import pickle
 #TODO: Add user input for changing server IP when UI is more developed.
 serverIp = '127.0.0.1'
 #TODO: Add GUI change to port when UI is more developed.
-#Harcoded port for 8880.
+#Harcoded port for 8888.
 port = 8888
 
 #Print what Server IP and port are in use.

@@ -50,7 +50,6 @@ def get_client_list_from_server():
     server_socket.connect((server_ip,server_port))
     server_socket.sendall(b'sendlist')
     sendable_client_list = b''
-    
     message = server_socket.recv(4096)
     if not message:
         return

@@ -140,7 +140,9 @@ while 1:
             storedClientList = storedClientList[1:]
             # pulls off and removes. acts like queue
             clientRequestDic[s] = storedClientList
+            # serialized = pickle.dumps(storedClientList)
             s.sendall(messageLow.upper())
+            # s.sendall(serialized)
             print('Message has been sent to client\n')
             # Adds the message from web server to the cache
         else:

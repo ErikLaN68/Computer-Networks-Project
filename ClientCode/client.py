@@ -46,17 +46,18 @@ def initial_message(server_socket):
     server_socket.sendall(to_be_sent.encode('utf-8'))
 
 def get_client_list_from_server():
+    server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    server_socket.connect((server_ip,server_port))
     server_socket.sendall(b'sendlist')
     sendable_client_list = b''
-    while True:
-        message = server_socket.recv(4096)
-        if not message:
-            break
-        else:
-            sendable_client_list += message
+    
+    message = server_socket.recv(4096)
+    if not message:
+        return
+    else:
+        sendable_client_list += message
     # Unpickle the data
-    print("Client list: " + str(sendable_client_list))
-    sendable_client_list = pickle.loads(sendable_client_list)
+    sendable_client_list = [sendable_client_list]
     return sendable_client_list
 
 def view_and_send_clients():
@@ -106,9 +107,28 @@ def view_history():
     for hist in history_list:
         print(hist)
 
+def main():
+    while True:
+        
+        user_input = input('User menu (Enter exit to end)\n1-View and send to clients:\n2-View Messages\n3-View History\n>> ')
+        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        sock.connect(('127.0.0.1', 8888))
+                    
+        match user_input:
+            case '1': view_and_send_clients()
+            case '2': view_messages()
+            case '3': view_history()
+            case 'exit': sys.exit()
+            case _: print('Incorrect input')
+
+        
+        sock.send(user_input.encode()) 
+        dataServer = sock.recv(100)
+        print("Message from server: " + dataServer.decode())
+
 if __name__ == '__main__':    
     server_ip = '127.0.0.1'
-    server_port = 8880
+    server_port = 8888
     hostname = 'client1'
     message_queue = queue.Queue()
     
@@ -128,28 +148,8 @@ if __name__ == '__main__':
     
     # starts the rec thread
     print('Receiver Thread Started\n')
-    thread_rec = threading.Thread(target=client_to_client_thread, args=(client_to_client_port))
+    thread_rec = threading.Thread(target=client_to_client_thread, args=(client_to_client_port, ))
     thread_rec.daemon = True
     thread_rec.start()
-        
-    while True:
-        
-        user_input = input('User menu (Enter exit to end)\n1-View and send to clients:\n2-View Messages\n3-View History\n>> ')
-        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        sock.connect(('127.0.0.1', 8888))
-                    
-        match user_input:
-            case '1': view_and_send_clients()
-            case '2': view_messages()
-            case '3': view_history()
-            case 'exit': sys.exit()
-            case _: print('Incorrect input')
-            #hi can u see me?
-
-        
-        sock.send(user_input.encode()) 
-        dataServer = sock.recv(100)
-        print("Message from server: " + dataServer.decode())
-
-   
-    sock.close()
+    
+    main()

@@ -32,7 +32,7 @@ import pickle
 serverIp = '127.0.0.1'
 #TODO: Add GUI change to port when UI is more developed.
 #Harcoded port for 8880.
-port = 8880
+port = 8888
 
 #Print what Server IP and port are in use.
 print('Using local host with IP '+ serverIp +'\nPort ' + str(port) + ' is being used')
@@ -140,7 +140,6 @@ while 1:
             storedClientList = storedClientList[1:]
             # pulls off and removes. acts like queue
             clientRequestDic[s] = storedClientList
-            
             s.sendall(messageLow.upper())
             print('Message has been sent to client\n')
             # Adds the message from web server to the cache

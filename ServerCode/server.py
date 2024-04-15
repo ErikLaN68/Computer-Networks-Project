@@ -29,7 +29,9 @@ import pickle
 
 #IP address of local host.
 #TODO: Add user input for changing server IP when UI is more developed.
-serverIp = '127.0.0.1'
+# Use '127.0.0.1' for test purposes
+serverIp = gethostbyname(gethostname())
+
 #TODO: Add GUI change to port when UI is more developed.
 #Harcoded port for 8888.
 port = 8888
@@ -44,13 +46,13 @@ tcpSerSock = socket(AF_INET, SOCK_STREAM)
 tcpSerSock.setblocking(0)
 #Checks to see if the port is busy
 try:
-    tcpSerSock.bind((serverIp, port))
+    tcpSerSock.bind((serverIp, port)) # bind to the server address and port
     isConnected = True
-except:
+except OSError:
     print('Port ' + str(port) + ' is busy')
     exit()
 tcpSerSock.listen(100)
-# Adds server to allow it to allows be connected to
+# Adds server to allow it to be connected to
 inputs = [tcpSerSock]
 
 #This is the list of Clients. We Need to Maintain this here!
@@ -59,10 +61,11 @@ clients = []
 #Function. Adds the ability to write the serialized clients to a .txt file.
     #It is already pickled and will persist between server uses.
 def write_clients_to_file(serialized_clients, file_name):
+    serialized_clients = pickle.loads(serialized_clients)
     with open(file_name, 'w') as file:
         for client in serialized_clients:
-            file.write(f"{client}\n")
-
+            file.write(f"{client} ")
+    print('\n')
 outputs = []
 address = []
 # Dict that holds the socket message pair
@@ -78,7 +81,8 @@ while 1:
     print('\n')
 
     #Call write_clients_to_file the clients list to "clients_list.txt"
-    write_clients_to_file(serialized_clients, "clients_list.txt")
+    write_clients_to_file(serialized_clients, "clients_list234.txt")
+    print(serialized_clients)
 
     # Print message.
     print("The list of clients has been successfully written to clients_list.txt")
@@ -113,6 +117,23 @@ while 1:
                 if s not in outputs:
                     outputs.append(s)
                 print('Got Message')
+                
+                if message == b'sendlist':
+                #Get the list of clients we have already created.
+                #.txt, temporarily for now.
+                    
+                    updated_client_list = pickle.loads(serialized_clients)
+                    updated_client_list = list(dict.fromkeys(updated_client_list))
+                    with open('clients_list.txt', 'rb') as file:
+                        # Read the pickled client_list.
+                        client_content = file.read()
+                        # Now read, send it to the client.
+                        # NOTICE: THE CLIENT MUST BE ABLE TO UNPACK IT TOO.
+                        # SEND IT HERE VIA THE SOCKET.
+                    # SEND the serialized cilent list through the network 
+                    s.sendall(serialized_clients)    
+                
+
             else:
                 # message is empty so need to look in the output and remove
                 # then rmove from inputs, close, and delete from dict
@@ -121,6 +142,24 @@ while 1:
                 inputs.remove(s)
                 s.close()
                 del clientRequestDic[s]
+         #else if message is a special request from client.
+            
+
+            #else if message is special request from client.
+            #elif message == "sendhistory":
+                #get the history file we have created.
+                #.txt temporarily.
+                #with open('client_history.txt', 'rb') as file:
+                    #read the history file.
+                    #history_client = file.read()
+                    #Now that its read, send it to client.
+                        #NOTICE. CLIENT MUST BE ABLE TO DO SOMETHING WITH THIS SEND.
+                    #SEND IT HERE VIA THE SOCKET.
+            
+            #else if message is a special request from client.
+            #elif message == "sendshutdown":
+                #IMPLEMENT LOGIC TO STRIKE THE CLIENT THAT SENT THIS FROM THE CLIENT LIST.
+
     
     # For loop for the writable list                                   
     for s in writable:
@@ -128,20 +167,20 @@ while 1:
         if s in clientRequestDic.keys():
             print('Completing request for ' + str(s) + '\n')
             storedClientList = clientRequestDic.get(s)
+            print(storedClientList)
             #Used to catch runaway sockets and checks that a message is there
             if len(storedClientList) <= 0:
                 # Removes that entry from the dict and removes from both list
                 inputs.remove(s)
                 outputs.remove(s)
                 del clientRequestDic[s]
-                break
+                continue
             # Pulls the info of the info from the dict
             messageLow = storedClientList[0]
             storedClientList = storedClientList[1:]
             # pulls off and removes. acts like queue
             clientRequestDic[s] = storedClientList
-            # serialized = pickle.dumps(storedClientList)
-            s.sendall(messageLow.upper())
+            # s.sendall(messageLow.upper())
             # s.sendall(serialized)
             print('Message has been sent to client\n')
             # Adds the message from web server to the cache

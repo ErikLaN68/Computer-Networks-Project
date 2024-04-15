@@ -12,25 +12,27 @@ import pickle
 # The client currently sends a single image and the receiver client will get that message and write it out
 # This has yet to be tested but will be.
 
-
 def make_server_socket(ip, port):
     # This function will be used to create a socket and connect to server
     # Try is used to make sure the user given infomation is correct
+    print('Connecting to server...\n')
     try:
         tcp_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        tcp_socket.connect((ip,int(port)))
+        tcp_socket.connect((ip,port))
     except socket.error as e:
+        print(e)
         print('Incorrect ip or port server information')
-        sys.exit(2)
+        return None
         
     print("Connected to server!\n")
     return tcp_socket
+
 
 def client_to_client_thread(client_to_client_port):
     tcp_server_socket = socket.socket(socket.AF_INET,socket.SOCK_STREAM)
     try:
         # will need to be the machine IP in the future
-        tcp_server_socket.bind(('127.0.0.1', client_to_client_port))  # Start listening!
+        tcp_server_socket.bind((ip, client_to_client_port))  # Start listening!
     except socket.error as e:
         print('Port is busy at the moment.\nTry again later')
         sys.exit(2)
@@ -40,32 +42,36 @@ def client_to_client_thread(client_to_client_port):
         message = client_socket.recv(50000)
         message_queue.put(message)
 
-def initial_message(server_socket):
+def initial_message(hostname, ip, server_socket):
     # Have to use bytes but is of form hostname, ip
     to_be_sent = hostname + ', ' + ip
     server_socket.sendall(to_be_sent.encode('utf-8'))
 
 def get_client_list_from_server():
-    server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    server_socket.connect((server_ip,server_port))
-    server_socket.sendall(b'sendlist')
-    sendable_client_list = b''
-    message = server_socket.recv(4096)
-    if not message:
-        return
-    else:
-        sendable_client_list += message
-    # Unpickle the data
-    sendable_client_list = [sendable_client_list]
-    return sendable_client_list
+    try:
+        server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        server_socket.connect((server_ip, server_port))
+        server_socket.sendall(b'sendlist')
+        data = b''
+        sendable_client_list = server_socket.recv(4096)
+       
+        if not sendable_client_list:
+            return
+        data += sendable_client_list
+        # Unpickle the data
+        data = pickle.loads(data)
+        data = list(dict.fromkeys(data))
+        return data
+    except Exception as e:
+        print(e) 
 
 def view_and_send_clients():
     client_list = get_client_list_from_server()
     for client in client_list:
-        print(client)
+          print(client)
     client_selection = input('Enter the IP of the host you would like to send to\n>> ')
     
-    test_file_name = 'fightstick.png'
+    test_file_name = 'ClientCode\\fightstick.png'
     print('Message to be sent is ' + test_file_name)
     with open(test_file_name, 'rb') as imagefile:
         imagedata = imagefile.read()
@@ -110,8 +116,8 @@ def main():
     while True:
         
         user_input = input('User menu (Enter exit to end)\n1-View and send to clients:\n2-View Messages\n3-View History\n>> ')
-        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        sock.connect(('127.0.0.1', 8888))
+        server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        server_socket.connect((server_ip, server_port))
                     
         match user_input:
             case '1': view_and_send_clients()
@@ -121,29 +127,35 @@ def main():
             case _: print('Incorrect input')
 
         
-        sock.send(user_input.encode()) 
-        dataServer = sock.recv(100)
-        print("Message from server: " + dataServer.decode())
+        server_socket.send(user_input.encode()) 
+        data_server = server_socket.recv(100)
+        print("Message from server: " + data_server.decode())
 
 if __name__ == '__main__':    
-    server_ip = '127.0.0.1'
-    server_port = 8888
-    hostname = 'client1'
+    while True:
+        server_ip = input('Enter the Server IP addrees to connect to:\n>> ')
+        while True:
+            try:
+                server_port = int(input('Enter the Server Port to connect to:\n>> '))
+                break
+            except ValueError:
+                print("server port is not an integer")
+
+        server_socket = make_server_socket(server_ip, server_port)
+        if server_socket != None:
+            break
+
+    hostname = input('Enter the Client Name:\n>> ')
     message_queue = queue.Queue()
     
-    ip = socket.gethostbyname(socket.gethostname())
+    ip = '127.0.0.1'
     client_to_client_port = 8080
-    
-    
-    
-    #Starts the client server
-    server_socket = make_server_socket(server_ip, server_port)
 
     # sends info to the server
-    initial_message(server_socket)
+    initial_message(hostname, ip, server_socket)
     
-    # Sends the initial message to the server to get the client list
-    sendable_client_list = get_client_list_from_server()
+    # # Sends the initial message to the server to get the client list
+    # sendable_client_list = get_client_list_from_server()
     
     # starts the rec thread
     print('Receiver Thread Started\n')

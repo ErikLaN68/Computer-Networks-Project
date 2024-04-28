@@ -24,8 +24,6 @@ def client_to_client_thread(client_to_client_port):
         print('Port is busy at the moment.\nTry again later')
         sys.exit(2)
     tcp_server_socket.listen(10)  # 10 is the max number of queued connections allowed
-    currentChunk = b''
-    cout = 0
     while True:
         client_socket, addr = tcp_server_socket.accept()
         get_client_message(client_socket)

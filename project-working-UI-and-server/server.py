@@ -74,12 +74,6 @@ def write_clients_to_file(serialized_clients, file_name):
 while True:
     serialized_clients = pickle.dumps(clients)
 
-    # print('\n')
-    # Write the serialized clients to a file
-    write_clients_to_file(serialized_clients, "clients_list.txt")
-    # print(serialized_clients)
-    # print("The list of clients has been successfully written to clients_list.txt")
-
     # Use select to monitor sockets for readable, writable, or exceptional conditions
     readable, writable, exceptional = select.select(inputs, outputs, inputs)
 
@@ -131,7 +125,6 @@ while True:
             # Handle special messages from client
             if check_for_h(message):
                 print('Printing the message')
-                print(message)
                 tokens = incoming_message_parse(message)
                 hostname = tokens[1].decode()
                 hostIP = tokens[2].decode()

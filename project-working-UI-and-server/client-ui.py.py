@@ -32,12 +32,8 @@ def client_to_client_thread(client_to_client_port):
         
 def get_client_message(client_socket):
     currentChunk = b''
-    cout = 0
     while True:
-        cout = cout + 1
         message = client_socket.recv(70000)
-        if cout == 44:
-            return
         if message == b'':
             incoming_message_parse(currentChunk)
             currentChunk = b''
@@ -71,7 +67,7 @@ def incoming_message_parse(incoming):
     tokens = []
     col_data = False
     currword = bytearray()
-    print(incoming)
+    
     for byte in incoming:
         if len(tokens) >= 3:
             col_data = True
@@ -157,10 +153,8 @@ def send_clients(file_selection, host_name, client_list):
             break
         
     client_pub_key = pickle.loads(client_pub_key)
-    # print(client_pub_key)
     
-    # aes_key = get_random_bytes(16)
-    aes_key = b'client1 for aes1'
+    aes_key = get_random_bytes(16)
     iv = b'clienttoclientiv'
     
     rsa_enc_key = rsa.encrypt(aes_key, client_pub_key)
@@ -185,7 +179,6 @@ def send_clients(file_selection, host_name, client_list):
         history_message = 'updatehistory:' + hostname + ' with ' + ip + ' sent the file ' + tokens[0] + '.' + tokens[1] + ' to  host ' + host_name + ' with IP ' + client_selection
         incoming = send_to_server(server_ip, server_port, history_message)
         
-        
         if incoming == b"DONE":
             print('history has been sent')
         client_socket.close()
@@ -199,7 +192,7 @@ def get_packets(data):
     currentChunk = bytearray()
 
     for byte in data:
-        if len(currentChunk) < 10000:
+        if len(currentChunk) < 50000:
             currentChunk.append(byte)
         else:
             chunks.append(currentChunk)
@@ -226,8 +219,6 @@ def submit_send():
     global client_list_server
     
     send_hostname = comobox.get()
-    # print('Selected host ' + send_hostname)
-    # print('Selected file ' + input_file_name)
     send_clients(input_file_name, send_hostname, client_list_server)
 
 def submit_name():
@@ -244,7 +235,7 @@ def submit_name():
 
 def file_exp():
     global input_file_name
-    input_file_name = filedialog.askopenfilename(initialdir = "/",
+    input_file_name = filedialog.askopenfilename(initialdir = "/home/code",
                                                 title = "Select a File",
                                                 filetypes = (("Sendable Files"," *.png *.jpg *.gif *.jpeg *.mp4"), ("all files","*.*")))
     
@@ -268,6 +259,7 @@ def popup_client():
     
     top_frame = ttk.Toplevel()
     top_frame.wm_title("Client List")
+    top_frame.attributes("-topmost", True)
     
     client_list_server = get_client_list_from_server()
     client_list = [('Hostname', 'IP address')]
@@ -342,7 +334,7 @@ class MyApp(ttk.Frame):
         app_frame = ttk.Frame(root, style = 'Custom.TFrame')
         app_frame.pack(fill=ttk.BOTH, expand=True)
 
-        self.label = ttk.Label(self, text="Welcome to NIVD-DC", font = ("Lato", 24))
+        self.label = ttk.Label(self, text="Welcome to NVID-DC", font = ("Lato", 24))
         self.label.pack(padx= 5, pady= 5)
 
         self.label_frame1 = ttk.Labelframe(self, text = "Client List", bootstyle = "white")

@@ -8,10 +8,6 @@ import sys
 import threading
 import pickle
 import subprocess
-import os
-import rsa
-from Crypto.Cipher import AES
-from Crypto.Random import get_random_bytes
 
 ### Thread that controls client to client ###
 
@@ -35,7 +31,7 @@ def get_client_message(client_socket):
     cout = 0
     while True:
         cout = cout + 1
-        message = client_socket.recv(70000)
+        message = client_socket.recv(50000)
         if cout == 44:
             return
         if message == b'':
@@ -44,34 +40,11 @@ def get_client_message(client_socket):
             return
         currentChunk = currentChunk + message
         
-def get_key(incoming):
-    found = False
-    skip = False
-    skip_count = 0
-    file_data = ''
-    key = ''
-    currword = bytearray()
-    for i, byte in enumerate(incoming):
-        if skip_count > 3:
-            skip = False 
-        if byte == ord('k') and incoming[i+1] == ord('e') and incoming[i+2] == ord('y') and incoming[i+3] == ord(':') and not found:
-            found = True
-            file_data = currword
-            currword = bytearray()
-            skip = True
-        if not skip:
-            currword.append(byte)
-        else:
-            skip_count = skip_count + 1
-            
-    key = currword
-    return key, file_data
-
 def incoming_message_parse(incoming):
     tokens = []
     col_data = False
     currword = bytearray()
-    print(incoming)
+    
     for byte in incoming:
         if len(tokens) >= 3:
             col_data = True
@@ -84,20 +57,11 @@ def incoming_message_parse(incoming):
             currword = bytearray()
             
     tokens.append(currword)
-    
     file_name = tokens[1].decode()
-
-    aes_key_enc, file_data = get_key(tokens[3])
-        
-    aes_key = rsa.decrypt(aes_key_enc, privk)
-    
-    iv = b'clienttoclientiv'
-    aes_ob = AES.new(aes_key, AES.MODE_CFB, iv)
-    
-    plain_text = aes_ob.decrypt(bytes(file_data))
+    file_data = tokens[3]
     
     with open(file_name, 'wb') as imagefile:
-        imagefile.write(plain_text)
+        imagefile.write(file_data)
     
     if '.mp4' in file_name:
         subprocess.run('mplayer ' + file_name + ' &', shell=True)  # Opens in default application on Linux
@@ -110,10 +74,7 @@ def send_to_server(server_ip, port, message_to_server):
     try:
         tcp_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         tcp_socket.connect((server_ip,int(port)))
-        if type(message_to_server) == bytes:
-            tcp_socket.sendall(message_to_server)
-        else:
-            tcp_socket.sendall(message_to_server.encode('utf-8'))
+        tcp_socket.sendall(message_to_server.encode('utf-8'))
         incoming = tcp_socket.recv(10000)
         tcp_socket.close()
         return incoming
@@ -123,7 +84,7 @@ def send_to_server(server_ip, port, message_to_server):
 
 def initial_message():
     # Have to use bytes but is of form hostname, ip
-    to_be_sent = b'hello:' + hostname.encode('utf-8') + b':' + ip.encode('utf-8') + b':' + pickle.dumps(pubk)
+    to_be_sent = 'hello:'+ hostname + ':' + ip
     incoming = send_to_server(server_ip, server_port, to_be_sent)
     if incoming == b"DONE":
         return
@@ -141,51 +102,35 @@ def get_client_list_from_server():
     return sendable_client_list
 
 def send_clients(file_selection, host_name, client_list):
-    if file_selection == '' or type(file_selection) == tuple:
+    if file_selection == '':
         tk.messagebox.showerror('test','Please Select a file')
         return
     
     with open(file_selection, 'rb') as imagefile:
         imagedata = imagefile.read()
-    
-    client_selection = ''
-    client_pub_key = ''
-    for client in client_list:
-        if client[0] == host_name:
-            client_selection = client[1]
-            client_pub_key = client[2]
-            break
         
-    client_pub_key = pickle.loads(client_pub_key)
-    # print(client_pub_key)
-    
-    # aes_key = get_random_bytes(16)
-    aes_key = b'client1 for aes1'
-    iv = b'clienttoclientiv'
-    
-    rsa_enc_key = rsa.encrypt(aes_key, client_pub_key)
-    
-    aes_ob = AES.new(aes_key, AES.MODE_CFB, iv)
-    cipher_text = aes_ob.encrypt(imagedata)
-    
     try:
         # Sends the image to the client
         # image needs the filename and file ext put in the message somewhere
-        tokens = file_selection.split('/')
+        tokens = file_selection.split('.')
         client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        client_selection = ''
+        for client in client_list:
+            if client[0] == host_name:
+                client_selection = client[1]
+                break
         client_socket.connect((client_selection,client_to_client_port))
-        file_message = b'name-type:' + tokens[len(tokens)-1].encode('utf-8') + b':data:' + cipher_text + b'key:'+rsa_enc_key
+        
+        file_message = b'name-type:' + tokens[0].encode('utf-8') + b'.' + tokens[1].encode('utf-8') + b':data:' + imagedata
         
         packets = get_packets(file_message)
         
         for packet in packets:
             client_socket.sendall(packet)
-        
+            
         # Sends a history message to the server
         history_message = 'updatehistory:' + hostname + ' with ' + ip + ' sent the file ' + tokens[0] + '.' + tokens[1] + ' to  host ' + host_name + ' with IP ' + client_selection
         incoming = send_to_server(server_ip, server_port, history_message)
-        
-        
         if incoming == b"DONE":
             print('history has been sent')
         client_socket.close()
@@ -281,7 +226,7 @@ def popup_client():
     label.grid(row=0, column=0)
     
     close = ttk.Button(top_frame, text="exit", command=top_frame.destroy)
-    close.grid(row=0, column=4, padx = 5, pady = 5, sticky = 'e')
+    close.grid(row=0, column=1, padx = 5, pady = 5, sticky = 'e')
     
     for i in range(len(client_list)):
         for j in range(2):
@@ -290,18 +235,18 @@ def popup_client():
             table.insert(ttk.END, client_list[i][j])
             
     input_title = ttk.Label(top_frame, text="Select a Hostname", font = ("Helvetica", 14))
-    input_title.grid(row=1, column=3, padx = 5, pady = 10)
+    input_title.grid(row=4, column=0, padx = 5, pady = 10)
     
     comobox = ttk.Combobox(top_frame, state="readonly", values=client_drop)
     if len(client_drop) > 0:
         comobox.set(client_drop[0])
-    comobox.grid(row=2, column=3,  padx = 5, pady = 5)
+    comobox.grid(row=5, column=0)
     
     button_file = ttk.Button(top_frame, text="Select Image/Video", command=file_exp)
-    button_file.grid(row=2, column=4, padx = 5, pady = 5)
+    button_file.grid(row=5, column=1, padx = 5, pady = 5)
     
     close = ttk.Button(top_frame, text="Send Message", command=submit_send)
-    close.grid(row=3, column=4, padx = 5, pady = 5)
+    close.grid(row=6, column=1, padx = 5, pady = 5)
 
 def pop_set_name():
     global input_hostname
@@ -381,12 +326,8 @@ class MyApp(ttk.Frame):
     def menu_exit(self):
         exit_app()
 
-# Sets the dispaly env for the xserver
-os.environ["DISPLAY"] = '192.168.56.1:0.0'
 
-# RSA keys
-(pubk, privk) = rsa.newkeys(1024)
-
+subprocess.run('export DISPLAY=192.168.56.1:0.0', shell=True)
 # Root for tk #
 root = ttk.Window(themename = 'superhero')
 root.title('Networks Project')
@@ -398,7 +339,7 @@ comobox = ttk.Combobox()
 
 client_list_server = []
 
-server_ip = '172.17.0.3'
+server_ip = '172.17.0.4'
 server_port = 8888
 hostname = 'client1'
 

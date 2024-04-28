@@ -38,33 +38,6 @@ history = []
 # Dictionary to keep track of clients and their requests
 client_request_dict = {}
 
-def incoming_message_parse(incoming):
-    tokens = []
-    col_data = False
-    currword = bytearray()
-    
-    for byte in incoming:
-        if len(tokens) >= 3:
-            col_data = True
-        if byte != ord(':'):
-            currword.append(byte)
-        elif col_data:
-            currword.append(byte)
-        elif len(tokens) < 3:
-            tokens.append(currword)
-            currword = bytearray()
-            
-    tokens.append(currword)
-    
-    print(len(tokens))
-    return tokens
-
-def check_for_h(incoming):
-    if incoming[0] == ord('h'):
-        return True
-    else:
-        return False
-
 # Function to write the serialized clients to a file
 def write_clients_to_file(serialized_clients, file_name):
     with open(file_name, 'wb') as file:
@@ -129,14 +102,14 @@ while True:
             stored_client_list = stored_client_list[1:]
             client_request_dict[sock] = stored_client_list
             # Handle special messages from client
-            if check_for_h(message):
+            if 'hello:' in message.decode('utf-8'):
                 print('Printing the message')
                 print(message)
-                tokens = incoming_message_parse(message)
-                hostname = tokens[1].decode()
-                hostIP = tokens[2].decode()
-                hostpub = tokens[3]
-                pair = (hostname, hostIP, hostpub)
+                message = message.decode('utf-8')
+                tokens = message.split(':')
+                hostname = tokens[1]
+                hostIP = tokens[2]
+                pair = (hostname, hostIP)
                 hist_message = time.strftime("%H:%M:%S", time.localtime()) + ' : ' + hostname + ' with IP ' + hostIP + ' joined'
                 history.append(hist_message)
                 print(pair)
@@ -166,7 +139,7 @@ while True:
                         hist_message = time.strftime("%H:%M:%S", time.localtime()) + ' : ' + client[0] + ' changed name to ' + new_name
                         history.append(hist_message)
                         clients.remove(client)
-                        clients.append((new_name, client_ip, client[2]))
+                        clients.append((new_name, client_ip))
                         break
                 sock.sendall(b'DONE')
             elif 'sendleave' in message.decode('utf-8'):
@@ -175,13 +148,9 @@ while True:
                 tokens = message.split(':')
                 hostname = tokens[1]
                 hostIP = tokens[2]
-                pair = ''
-                for client in clients:
-                    if client[0] == hostname and client[1] == hostIP:
-                        pair = client
-                        break 
-                # if pair in clients:
-                clients.remove(pair)
+                pair = (hostname, hostIP)
+                if pair in clients:
+                    clients.remove(pair)
                 del client_request_dict[sock]
                 inputs.remove(sock)
                 outputs.remove(sock)
